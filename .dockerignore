@@ -1,0 +1,15 @@
+# Build context for serving/Dockerfile (repository root).
+# The image only needs requirements-serve.txt, serving/ and artifacts/.
+.git
+.github
+data
+docs
+monitoring
+producer
+sink
+tests
+tools
+training
+**/__pycache__
+**/.pytest_cache
+artifacts/manifest.original.json

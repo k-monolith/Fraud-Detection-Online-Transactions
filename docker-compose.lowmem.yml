@@ -1,0 +1,66 @@
+# docker-compose.lowmem.yml — low-memory profile for 8 GB RAM hosts
+# (Docker Desktop VM of about 4 GB). Use it together with the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up --build -d
+# It caps the memory of Kafka, Flink, PostgreSQL, Prometheus and Grafana, and
+# sets the producer rate to 4 events/s.
+
+services:
+  kafka:
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  jobmanager:
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 768m
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  taskmanager:
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        taskmanager.memory.process.size: 1280m
+        taskmanager.memory.managed.size: 64m
+        taskmanager.memory.network.max: 64m
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
+    deploy:
+      resources:
+        limits:
+          memory: 1800m
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  producer:
+    environment:
+      RATE_EPS: "4"
+
+  metrics-exporter:
+    environment:
+      BOOTSTRAP_N: "1000"

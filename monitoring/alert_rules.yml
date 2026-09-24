@@ -1,0 +1,61 @@
+# Alert rules. Visible under Prometheus -> Alerts (http://localhost:9090/alerts).
+groups:
+  - name: system-health
+    rules:
+      - alert: ScoringLatencyP99Breach
+        expr: histogram_quantile(0.99, sum(rate(scoring_latency_ms_bucket[5m])) by (le)) > 500
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "p99 scoring latency above 500 ms"
+      - alert: FlinkCheckpointFailures
+        expr: increase(flink_jobmanager_job_numberOfFailedCheckpoints[10m]) > 0
+        for: 0m
+        labels: { severity: page }
+        annotations: { summary: "Flink checkpoint failures in the last 10 min" }
+      - alert: FlinkJobRestarted
+        expr: increase(flink_jobmanager_job_numRestarts[15m]) > 0
+        for: 0m
+        labels: { severity: warn }
+        annotations: { summary: "Flink job restarted" }
+      - alert: DlqSpike
+        expr: rate(dlq_events_total[5m]) > 1
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "DLQ rate above 1 event/s (baseline ~0.01/s at 50 eps, 200 ppm)"
+      - alert: ScoringConsumerLagGrowing
+        expr: sum(scoring_consumer_lag) > 5000
+        for: 5m
+        labels: { severity: warn }
+        annotations: { summary: "Scoring job lagging >5000 events on transactions.raw" }
+      - alert: ExporterDown
+        expr: up{job="model-exporter"} == 0
+        for: 2m
+        labels: { severity: warn }
+        annotations: { summary: "Model-behavior exporter is down" }
+
+  - name: model-behavior
+    rules:
+      - alert: FraudFlagRateOutOfBounds
+        expr: fraud_flag_rate < 0.005 or fraud_flag_rate > 0.15
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "Fraud flag rate outside [0.5%, 15%]"
+      - alert: ScorePsiBreach
+        expr: score_psi > 0.2
+        for: 10m
+        labels: { severity: page }
+        annotations: { summary: "Score distribution PSI > 0.2 vs training reference" }
+      - alert: FeaturePsiBreach
+        expr: max(feature_psi) > 0.2
+        for: 10m
+        labels: { severity: warn }
+        annotations: { summary: "A drift feature has PSI > 0.2 vs training reference" }
+      - alert: FallbackRateSpike
+        expr: fallback_rate > 0.01
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "More than 1% of events failing open to REVIEW"

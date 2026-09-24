@@ -1,0 +1,10 @@
+{
+  "threshold": 0.2883151173591614,
+  "selection": "F1-maximizing point on the precision-recall curve",
+  "selected_on": "validation slice = last 10% of the training period (forward-in-time), scored by the pre-refit core-train stack",
+  "base_model_order_for_meta_features": [
+    "xgb",
+    "lgbm",
+    "cat"
+  ]
+}

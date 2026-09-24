@@ -1,0 +1,192 @@
+# docker-compose.yml — local deployment of the real-time scoring stack.
+# Prerequisite: place the IEEE-CIS replay files in ./data/
+# (test_transaction.csv, test_identity.csv). Then:  docker compose up --build -d
+# Monitoring: Prometheus (http://localhost:9090), Grafana (http://localhost:3000,
+# admin/admin), model-behavior exporter (http://localhost:8000/metrics).
+# Persistence: PostgreSQL stores every scored event and dead letter; data
+# survives restarts in the pgdata volume.
+# Hosts with 8 GB RAM: add  -f docker-compose.yml -f docker-compose.lowmem.yml
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "29092:29092"   # host access for debugging (kcat etc.)
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  topics-init:
+    image: apache/kafka:3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "for t in transactions.raw transactions.scored transactions.dlq; do
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092
+      --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1;
+      done"
+    restart: "no"
+
+  jobmanager:
+    build:
+      context: .
+      dockerfile: serving/Dockerfile
+    image: fraud-serving
+    container_name: jobmanager
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8081:8081"     # Flink web UI
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/overview >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  taskmanager:
+    image: fraud-serving
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9249
+      KAFKA_BOOTSTRAP: kafka:9092
+      ARTIFACTS_DIR: /opt/artifacts
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+
+  job-submit:
+    image: fraud-serving
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+      topics-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      ARTIFACTS_DIR: /opt/artifacts
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "flink run --jobmanager jobmanager:8081 --detached
+      -pyexec /opt/pyenv/bin/python -pyclientexec /opt/pyenv/bin/python
+      -py /opt/serving/flink_job.py"
+    restart: "no"
+
+  producer:
+    build: ./producer
+    container_name: producer
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      TOPIC_RAW: transactions.raw
+      RATE_EPS: "50"
+      LOOP: "true"
+      MALFORMED_PPM: "200"
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+
+  metrics-exporter:
+    build: ./monitoring/exporter
+    container_name: metrics-exporter
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      ARTIFACTS_DIR: /opt/artifacts
+      SCORING_GROUP: fraud-scoring
+    volumes:
+      - ./artifacts:/opt/artifacts:ro
+    ports:
+      - "8000:8000"    # /metrics (debug)
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - metrics-exporter
+
+  grafana:
+    image: grafana/grafana:12.2.1
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  postgres:
+    image: postgres:17.4
+    container_name: postgres
+    environment:
+      POSTGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+      POSTGRES_DB: fraud
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sink/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    ports:
+      - "5432:5432"    # host access for ad-hoc SQL (psql/DBeaver)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud -d fraud"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sink:
+    build: ./sink
+    container_name: sink
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      DATABASE_URL: postgresql://fraud:fraud@postgres:5432/fraud
+    depends_on:
+      postgres:
+        condition: service_healthy
+      topics-init:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

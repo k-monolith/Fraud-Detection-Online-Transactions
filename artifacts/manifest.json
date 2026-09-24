@@ -1,0 +1,191 @@
+{
+  "model_version": "20260921T144658Z",
+  "created_utc": "2026-09-21T14:46:58.036244+00:00",
+  "seed": 42,
+  "versions": {
+    "python": "3.12.13",
+    "numpy": "2.0.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.6.1",
+    "xgboost": "3.2.0",
+    "lightgbm": "4.6.0",
+    "catboost": "1.2.10",
+    "optuna": "4.9.0",
+    "scipy": "1.16.3",
+    "joblib": "1.5.3"
+  },
+  "hardware": {
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "processor": "x86_64",
+    "gpu_detected": true
+  },
+  "data_sha256": {
+    "train_transaction.csv": "3a5c83ab6b3cc13dcabe5ffa9f522307fd5f7f7b6e6f6a60c32284ca6283d642",
+    "train_identity.csv": "b63c725d8377be90a995268d97f347c17d456b95db45807adcf9f59cd603c37c"
+  },
+  "data_contract": {
+    "categorical_columns": [
+      "DeviceInfo",
+      "DeviceType",
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M7",
+      "M8",
+      "M9",
+      "P_emaildomain",
+      "ProductCD",
+      "R_emaildomain",
+      "card4",
+      "card6",
+      "id_12",
+      "id_15",
+      "id_16",
+      "id_23",
+      "id_27",
+      "id_28",
+      "id_29",
+      "id_30",
+      "id_31",
+      "id_33",
+      "id_34",
+      "id_35",
+      "id_36",
+      "id_37",
+      "id_38"
+    ],
+    "numeric_columns_count": 401,
+    "categorical_coercion": "non-null categorical values cast to str before pipeline",
+    "unseen_category_code": -1
+  },
+  "split": {
+    "n_total": 590540,
+    "n_train_full": 472432,
+    "n_core_train": 425188,
+    "n_val": 47244,
+    "n_holdout": 118108,
+    "transaction_dt_boundaries": {
+      "train_end": 12192842.0,
+      "val_start": 10766698.0,
+      "holdout_start": 12192900.0
+    },
+    "fraud_rate": {
+      "train_full": 0.03513521522674162,
+      "val": 0.03500973668614004,
+      "holdout": 0.034409184813899145
+    }
+  },
+  "config": {
+    "data_dir": "/kaggle/input/competitions/ieee-fraud-detection",
+    "out_dir": "/kaggle/working/artifacts",
+    "fig_dir": "/kaggle/working/figures",
+    "seed": 42,
+    "train_frac": 0.8,
+    "val_frac_of_train": 0.1,
+    "top_k_features": 30,
+    "optuna_trials": 30,
+    "cv_folds": 5,
+    "unseen_category_code": -1,
+    "warm_start_params": {
+      "xgb": {
+        "n_estimators": 400,
+        "max_depth": 10,
+        "learning_rate": 0.1205712628744377,
+        "subsample": 0.8394633936788146,
+        "colsample_bytree": 0.662397808134481,
+        "scale_pos_weight": 17.039146842803188
+      },
+      "lgbm": {
+        "n_estimators": 700,
+        "max_depth": 10,
+        "learning_rate": 0.0156357101891512,
+        "subsample": 0.6347712208051371,
+        "colsample_bytree": 0.6888956883882508,
+        "scale_pos_weight": 15.197908482119292
+      },
+      "cat": {
+        "n_estimators": 600,
+        "max_depth": 9,
+        "learning_rate": 0.041141781173145514,
+        "subsample": 0.8687409187432332,
+        "class_weight_pos": 15.878518147819292
+      }
+    }
+  },
+  "selected_features": [
+    "C13",
+    "TransactionAmt",
+    "card1",
+    "C1",
+    "TransactionDT",
+    "V258",
+    "card6",
+    "card2",
+    "V70",
+    "C14",
+    "addr1",
+    "D1",
+    "P_emaildomain",
+    "C11",
+    "C5",
+    "C2",
+    "V294",
+    "D15",
+    "D4",
+    "D10",
+    "M5",
+    "card5",
+    "dist1",
+    "M6",
+    "D2",
+    "V91",
+    "C6",
+    "D11",
+    "D3",
+    "R_emaildomain"
+  ],
+  "hyperparameters": {
+    "xgb": {
+      "n_estimators": 400.0,
+      "max_depth": 10.0,
+      "learning_rate": 0.1205712628744377,
+      "subsample": 0.8394633936788146,
+      "colsample_bytree": 0.662397808134481,
+      "scale_pos_weight": 17.039146842803188
+    },
+    "lgbm": {
+      "n_estimators": 700.0,
+      "max_depth": 10.0,
+      "learning_rate": 0.0156357101891512,
+      "subsample": 0.6347712208051371,
+      "colsample_bytree": 0.6888956883882508,
+      "scale_pos_weight": 15.197908482119292
+    },
+    "cat": {
+      "n_estimators": 600.0,
+      "max_depth": 9.0,
+      "learning_rate": 0.041141781173145514,
+      "subsample": 0.8687409187432332,
+      "class_weight_pos": 15.878518147819292
+    }
+  },
+  "hyperparameter_source": {
+    "xgb": "warm_start",
+    "lgbm": "warm_start",
+    "cat": "warm_start"
+  },
+  "meta_learner": {
+    "type": "XGBClassifier",
+    "n_estimators": 200,
+    "max_depth": 2,
+    "learning_rate": 0.1
+  },
+  "threshold": 0.2883151173591614,
+  "holdout_metrics": {
+    "roc_auc": 0.917809878368882,
+    "threshold": 0.2883151173591614
+  }
+}

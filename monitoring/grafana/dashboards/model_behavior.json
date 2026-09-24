@@ -1,0 +1,57 @@
+{
+ "title": "Model Behavior",
+ "uid": "fraud-model-behavior",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "10s",
+ "time": {"from": "now-30m", "to": "now"},
+ "timezone": "browser",
+ "panels": [
+  {"type": "timeseries", "title": "Fraud flag rate (5 min window)",
+   "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+   "targets": [
+    {"expr": "fraud_flag_rate", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "flag rate"}
+   ]},
+  {"type": "timeseries", "title": "Decisions/s",
+   "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+   "targets": [
+    {"expr": "sum(rate(scored_events_total[1m])) by (decision)", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "{{decision}}"}
+   ]},
+  {"type": "timeseries", "title": "Score distribution quantiles",
+   "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {}, "overrides": []},
+   "targets": [
+    {"expr": "histogram_quantile(0.5, sum(rate(fraud_score_bucket[5m])) by (le))", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "p50"},
+    {"expr": "histogram_quantile(0.9, sum(rate(fraud_score_bucket[5m])) by (le))", "refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "p90"},
+    {"expr": "histogram_quantile(0.99, sum(rate(fraud_score_bucket[5m])) by (le))", "refId": "C", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "p99"}
+   ]},
+  {"type": "timeseries", "title": "Score PSI vs training reference (alert > 0.2)",
+   "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {}, "overrides": []},
+   "targets": [
+    {"expr": "score_psi", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "score PSI"},
+    {"expr": "0.2", "refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "alert threshold"}
+   ]},
+  {"type": "timeseries", "title": "Feature PSI (top model features)",
+   "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {}, "overrides": []},
+   "targets": [
+    {"expr": "feature_psi", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "{{feature}}"}
+   ]},
+  {"type": "timeseries", "title": "Fallback (REVIEW) rate + bootstrap flag",
+   "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+   "datasource": {"type": "prometheus", "uid": "prometheus"},
+   "fieldConfig": {"defaults": {}, "overrides": []},
+   "targets": [
+    {"expr": "fallback_rate", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "fallback rate"},
+    {"expr": "reference_bootstrap_used", "refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"}, "legendFormat": "bootstrap ref (0/1)"}
+   ]}
+ ]
+}

@@ -1,0 +1,27 @@
+# Replay data (download from Kaggle, see README) — keep the folder only
+data/*
+!data/.gitkeep
+
+# Local-only files
+artifacts/manifest.original.json
+docs/report.tex
+docs/images/
+docker-compose.override.yml
+training/
+requirements-train.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Environment and editors
+.env
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
