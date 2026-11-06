@@ -328,7 +328,7 @@ The reference comes from one of two sources:
 | Source | When | Content |
 |---|---|---|
 | `artifacts/reference_distributions.json` | the file exists (not included in the repository) | built by `tools/make_reference.py` from `train_transaction.csv` and `train_identity.csv`: feature distributions over the training window (first 80% by `TransactionDT`) and the distribution of ensemble scores on a 20,000-row sample of the held-out period (seed 42) |
-| live traffic | no reference file | the first `BOOTSTRAP_N` scores (5,000 by default) and up to `BOOTSTRAP_N` raw values per drift feature collected until then; `reference_bootstrap_used` is 1, and the PSI panels fill in only after that point |
+| live traffic | no reference file | the first `BOOTSTRAP_N` scores (5,000 by default) and up to `BOOTSTRAP_N` raw values per drift feature collected until then; `reference_bootstrap_used` is 1, and the score PSI panel fills in only after that point |
 
 Building the reference file:
 
@@ -550,6 +550,7 @@ The manifest records the seed (42), the SHA-256 hashes of the training files and
 │   │   └── provisioning/           data sources and dashboard provider
 │   ├── alert_rules.yml             alert rules
 │   └── prometheus.yml              scrape and rule configuration
+├── notebook/                       EDA and model-training notebooks
 ├── producer/                       replay producer: Dockerfile, replay_producer.py
 ├── serving/                        Flink job: Dockerfile, flink_job.py, scoring_udf.py, schemas.py
 ├── sink/                           PostgreSQL sink: Dockerfile, consumer_sink.py, schema.sql

@@ -102,9 +102,9 @@ A two-minute walkthrough once the stack is up:
 3. **Trigger an alert**: set `MALFORMED_PPM: "500000"` under `producer` in `docker-compose.yml` and run `docker compose up -d producer`. The **Dead letters** counter in the Transactions row climbs, and the `DlqSpike` alert fires at http://localhost:9090/alerts after a few minutes. Set the value back to `"200"` and rerun the command to recover.
 4. **Fail-open path**: inference stays healthy through the bad input — the `REVIEW` counter and the fallback-rate panel stay near zero.
 
-![Transactions — live feed and alerts](demo/Transactions.png)
+![Transactions — live feed and alerts](assets/dashboard-transactions.png)
 
-![Model behavior — flag rate and score drift](demo/Model%20behavior.png)
+![Model behavior — flag rate and score drift](assets/dashboard-model-behavior.png)
 
 ## Services and ports
 
@@ -210,14 +210,15 @@ FROM scored_transactions GROUP BY 1 ORDER BY 1 DESC LIMIT 24;
 .
 ├── .github/workflows/tests.yml   CI workflow (pytest)
 ├── artifacts/                    trained models, preprocessing pipeline, features, threshold, manifest
-├── demo/                         dashboard screenshots for this README
+├── assets/                       dashboard screenshots for this README
 ├── data/                         replay CSVs from Kaggle (not tracked)
-├── docs/operations.md            operating guide
+├── docs/                         PROJECT.md (full documentation), operations.md (operating guide)
 ├── monitoring/
 │   ├── exporter/                 model-behavior metrics exporter (PSI, flag rate, lag)
 │   ├── grafana/                  dashboard and provisioning
 │   ├── alert_rules.yml
 │   └── prometheus.yml
+├── notebook/                     EDA and model-training notebooks
 ├── producer/                     replay producer
 ├── serving/                      PyFlink job, scoring operator, event schema, Dockerfile
 ├── sink/                         Kafka-to-PostgreSQL consumer and table schema
