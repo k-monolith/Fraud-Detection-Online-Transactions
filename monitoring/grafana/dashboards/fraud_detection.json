@@ -1,6 +1,6 @@
 {
-  "title": "Transactions",
-  "uid": "fraud-transactions",
+  "title": "Fraud Detection",
+  "uid": "fraud-detection",
   "schemaVersion": 39,
   "version": 1,
   "refresh": "5s",
@@ -18,13 +18,26 @@
   },
   "panels": [
     {
+      "type": "row",
+      "title": "Transactions",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": [],
+      "id": 1
+    },
+    {
       "type": "stat",
       "title": "Scored (total)",
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -61,7 +74,8 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 2
     },
     {
       "type": "stat",
@@ -70,7 +84,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -107,7 +121,8 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 3
     },
     {
       "type": "stat",
@@ -116,7 +131,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -153,7 +168,8 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 4
     },
     {
       "type": "stat",
@@ -162,7 +178,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -199,7 +215,8 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 5
     },
     {
       "type": "stat",
@@ -208,7 +225,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -245,7 +262,8 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 6
     },
     {
       "type": "stat",
@@ -254,7 +272,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 0
+        "y": 1
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -291,16 +309,17 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 7
     },
     {
       "type": "table",
       "title": "Live feed \u2014 latest scored transactions",
       "gridPos": {
-        "h": 14,
+        "h": 12,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 5
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -443,16 +462,17 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 8
     },
     {
       "type": "table",
       "title": "Latest fraud ALERTs",
       "gridPos": {
-        "h": 10,
-        "w": 12,
+        "h": 9,
+        "w": 24,
         "x": 0,
-        "y": 18
+        "y": 17
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -595,172 +615,98 @@
           "rawQuery": true,
           "editorMode": "code"
         }
-      ]
+      ],
+      "id": 9
     },
     {
-      "type": "table",
-      "title": "Latest REVIEW / fail-open (inference errors)",
+      "type": "row",
+      "title": "Model behavior",
+      "collapsed": false,
       "gridPos": {
-        "h": 10,
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": [],
+      "id": 10
+    },
+    {
+      "type": "timeseries",
+      "title": "Decisions/s",
+      "gridPos": {
+        "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 18
+        "x": 0,
+        "y": 27
       },
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "filterable": true
-          }
+          "unit": "ops"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "decision"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background"
-                }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "ALERT": {
-                        "color": "red",
-                        "index": 0
-                      },
-                      "REVIEW": {
-                        "color": "orange",
-                        "index": 1
-                      },
-                      "PASS": {
-                        "color": "green",
-                        "index": 2
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "fraud_probability"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
-                }
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "max",
-                "value": 1
-              },
-              {
-                "id": "decimals",
-                "value": 4
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 0.15
-                    },
-                    {
-                      "color": "red",
-                      "value": 0.2883
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "latency_ms"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "ms"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "scored_at"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "dateTimeAsIso"
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "sortBy": [],
-        "cellHeight": "sm",
-        "showHeader": true
+        "overrides": []
       },
       "targets": [
         {
+          "expr": "sum(rate(scored_events_total[1m])) by (decision)",
           "refId": "A",
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "rawSql": "select to_timestamp(processing_ts) as scored_at, transaction_id, event_time, fraud_probability, is_fraud_pred, decision, latency_ms, model_version, error, warnings::text as warnings from scored_transactions where decision = 'REVIEW' order by processing_ts desc limit 50",
-          "format": "table",
-          "rawQuery": true,
-          "editorMode": "code"
+          "legendFormat": "{{decision}}"
         }
-      ]
+      ],
+      "id": 11
     },
     {
-      "type": "table",
-      "title": "Dead letters (malformed input)",
+      "type": "timeseries",
+      "title": "Fraud flag rate (5 min window)",
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 28
+        "w": 12,
+        "x": 12,
+        "y": 27
       },
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "fraud_flag_rate",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "flag rate"
+        }
+      ],
+      "id": 12
+    },
+    {
+      "type": "timeseries",
+      "title": "Score PSI vs training reference (alert > 0.2)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {},
@@ -768,17 +714,64 @@
       },
       "targets": [
         {
+          "expr": "score_psi",
           "refId": "A",
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "rawSql": "select inserted_at, error, left(raw, 300) as raw from dlq_events order by id desc limit 50",
-          "format": "table",
-          "rawQuery": true,
-          "editorMode": "code"
+          "legendFormat": "score PSI"
+        },
+        {
+          "expr": "0.2",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "alert threshold"
         }
-      ]
+      ],
+      "id": 13
+    },
+    {
+      "type": "timeseries",
+      "title": "Fallback (REVIEW) rate + bootstrap flag",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "fallback_rate",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "fallback rate"
+        },
+        {
+          "expr": "reference_bootstrap_used",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "bootstrap ref (0/1)"
+        }
+      ],
+      "id": 14
     }
   ]
 }

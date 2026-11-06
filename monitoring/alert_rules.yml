@@ -8,27 +8,12 @@ groups:
         labels: { severity: page }
         annotations:
           summary: "p99 scoring latency above 500 ms"
-      - alert: FlinkCheckpointFailures
-        expr: increase(flink_jobmanager_job_numberOfFailedCheckpoints[10m]) > 0
-        for: 0m
-        labels: { severity: page }
-        annotations: { summary: "Flink checkpoint failures in the last 10 min" }
-      - alert: FlinkJobRestarted
-        expr: increase(flink_jobmanager_job_numRestarts[15m]) > 0
-        for: 0m
-        labels: { severity: warn }
-        annotations: { summary: "Flink job restarted" }
       - alert: DlqSpike
         expr: rate(dlq_events_total[5m]) > 1
         for: 2m
         labels: { severity: page }
         annotations:
           summary: "DLQ rate above 1 event/s (baseline ~0.01/s at 50 eps, 200 ppm)"
-      - alert: ScoringConsumerLagGrowing
-        expr: sum(scoring_consumer_lag) > 5000
-        for: 5m
-        labels: { severity: warn }
-        annotations: { summary: "Scoring job lagging >5000 events on transactions.raw" }
       - alert: ExporterDown
         expr: up{job="model-exporter"} == 0
         for: 2m
@@ -48,11 +33,6 @@ groups:
         for: 10m
         labels: { severity: page }
         annotations: { summary: "Score distribution PSI > 0.2 vs training reference" }
-      - alert: FeaturePsiBreach
-        expr: max(feature_psi) > 0.2
-        for: 10m
-        labels: { severity: warn }
-        annotations: { summary: "A drift feature has PSI > 0.2 vs training reference" }
       - alert: FallbackRateSpike
         expr: fallback_rate > 0.01
         for: 5m

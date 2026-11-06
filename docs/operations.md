@@ -108,13 +108,14 @@ In Git Bash, prefix `docker exec` commands with `MSYS_NO_PATHCONV=1`.
 | Metrics exporter | http://localhost:8000/metrics |
 | PostgreSQL | `localhost:5432`, database `fraud`, user `fraud`, password `fraud` |
 
-Grafana dashboards (folder "Fraud Detection"):
+Grafana dashboard (folder "Fraud Detection"): http://localhost:3000/d/fraud-detection/fraud-detection?refresh=5s
 
-| Dashboard | Address | Panels |
-|---|---|---|
-| Transactions | http://localhost:3000/d/fraud-transactions/transactions?refresh=5s | scored totals, ALERT and REVIEW counts, flag rate, dead letters, live feed of scored transactions, latest alerts, latest REVIEW events, latest dead letters |
-| Model Behavior | http://localhost:3000/d/fraud-model-behavior/model-behavior?refresh=5s | flag rate, decisions per second, score quantiles, score PSI, feature PSI, fallback rate |
-| System Health | http://localhost:3000/d/fraud-system-health/system-health?refresh=5s | events per second (raw, scored, DLQ), scoring latency, consumer lag, Flink checkpoints, restarts, backpressure |
+| Row | Panels |
+|---|---|
+| Transactions | scored totals, ALERT and REVIEW counts, flag rate, dead letters, live feed of scored transactions, latest alerts |
+| Model behavior | decisions per second, flag rate, score PSI, fallback (REVIEW) rate |
+
+Throughput, scoring latency, consumer lag and Flink metrics are not on the dashboard; query them in Prometheus (http://localhost:9090) or check the Flink UI (http://localhost:8081).
 
 ## 5. Configuration
 
@@ -160,10 +161,10 @@ Sink (`sink`):
 
 ## 6. Drift reference
 
-The score PSI and feature PSI panels compare live traffic with a reference distribution:
+The score PSI panel compares live traffic with a reference distribution (the exporter also computes per-feature PSI, exported as `feature_psi` in Prometheus):
 
 - If `artifacts/reference_distributions.json` exists, the exporter uses it.
-- Otherwise the exporter builds the reference from the first `BOOTSTRAP_N` events, and the metric `reference_bootstrap_used` is 1. The PSI panels fill in once that many events have been scored.
+- Otherwise the exporter builds the reference from the first `BOOTSTRAP_N` events, and the metric `reference_bootstrap_used` is 1. The score PSI panel fills in once that many events have been scored.
 
 To build the reference from the IEEE-CIS training files:
 
@@ -218,9 +219,8 @@ docker compose up -d --no-deps --force-recreate job-submit
 **"exec: C:/Program Files/Git/...: no such file" (Git Bash).** Git Bash rewrites paths; prefix the command with `MSYS_NO_PATHCONV=1`.
 
 **Grafana panels show "No data".**
-- Score or feature PSI: the drift reference is not built yet (see section 6).
-- Consumer lag: check `docker compose logs metrics-exporter` for `lag poll failed`.
-- Transactions dashboard: the PostgreSQL data source did not load; run `docker compose restart grafana`.
+- Score PSI: the drift reference is not built yet (see section 6).
+- Transactions row: the PostgreSQL data source did not load; run `docker compose restart grafana`.
 
 **Flink job RESTARTING or FAILED.** Check the TaskManager log for errors:
 

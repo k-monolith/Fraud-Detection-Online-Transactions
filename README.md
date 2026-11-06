@@ -10,9 +10,9 @@ A streaming fraud detection system that scores card transactions one at a time a
 
 - **Per-event scoring** in an Apache Flink 2.1 (PyFlink) job, with Kafka as input and output.
 - **Stacking ensemble**: XGBoost, LightGBM and CatBoost base models feeding an XGBoost meta-learner, using 30 features selected by feature importance.
-- **ROC-AUC 0.918** on 118,108 held-out transactions, the most recent 20% of the timeline.
+- **ROC-AUC 0.918 and accuracy 0.972** on 118,108 held-out transactions, the most recent 20% of the timeline.
 - **Robust input handling**: malformed events are routed to a dead-letter topic, and inference errors produce a `REVIEW` decision instead of a dropped event.
-- **Monitoring**: throughput, latency, consumer lag, Flink checkpoints, fraud flag rate and drift (PSI) of scores and input features, with 10 alert rules and 3 Grafana dashboards.
+- **Monitoring**: one Grafana dashboard covering live transactions and model behavior (decisions per second, flag rate, score drift, fail-open rate), backed by 6 Prometheus alert rules.
 - **Persistence**: every scored transaction and dead letter is stored in PostgreSQL for review queries.
 - **Reproducible**: pinned dependency versions, versioned model artifacts with a manifest, and 30 automated tests run by GitHub Actions.
 
@@ -41,7 +41,10 @@ The job checkpoints every 30 seconds in exactly-once mode. Downstream, a sink se
 | Split | time-ordered on `TransactionDT`: first 80% (472,432 rows) for training, last 20% (118,108 rows) held out |
 | Decision threshold | 0.2883, the F1-maximizing point on a validation slice (the last 10% of the training period) |
 | **Held-out ROC-AUC** | **0.918** |
+| **Held-out accuracy** | **0.972** at the decision threshold |
 | Model version | `20260921T144658Z` |
+
+Accuracy comes from the holdout evaluation in `notebook/fraud-detection-training.ipynb` (the confusion matrix and ROC curve are plotted there). Because only about 3.5% of transactions are fraud, accuracy is reported together with ROC-AUC, never alone: a model that never flags fraud would already be about 96.5% accurate. Training runs vary slightly in the third decimal: `artifacts/manifest.json` records the ROC-AUC of the committed model, and the notebook's holdout cell reports the metrics of its own most recent run.
 
 The trained model is included in `artifacts/`. Models are stored in their native formats (XGBoost JSON, LightGBM text, CatBoost binary); the preprocessing pipeline is a pickled scikit-learn object, loaded with the same scikit-learn version it was saved with. `artifacts/manifest.json` records the library versions, random seed, SHA-256 hashes of the training files, selected features, hyperparameters and threshold.
 
@@ -79,7 +82,7 @@ On a machine with 8 GB RAM, use the low-memory profile:
 docker compose -f docker-compose.yml -f docker-compose.lowmem.yml up --build -d
 ```
 
-Then open Grafana at http://localhost:3000 (user `admin`, password `admin`) and go to the "Fraud Detection" folder.
+Then open Grafana at http://localhost:3000 (user `admin`, password `admin`) and open the **Fraud Detection** dashboard in the "Fraud Detection" folder.
 
 The full operating guide (start order, health checks, configuration, alert demo, troubleshooting) is in [docs/operations.md](docs/operations.md).
 
@@ -90,11 +93,24 @@ pip install -r requirements-serve.txt pytest
 python -m pytest tests/
 ```
 
+## Demo
+
+A two-minute walkthrough once the stack is up:
+
+1. **Open the dashboard**: http://localhost:3000/d/fraud-detection/fraud-detection (user `admin`, password `admin`). The **Transactions** row fills with scored transactions within a minute; `ALERT` rows are highlighted in red with their fraud probability.
+2. **Model behavior row**: decisions per second, the fraud flag rate settling near the dataset's natural rate, and the score PSI drift panel with its 0.2 alert line.
+3. **Trigger an alert**: set `MALFORMED_PPM: "500000"` under `producer` in `docker-compose.yml` and run `docker compose up -d producer`. The **Dead letters** counter in the Transactions row climbs, and the `DlqSpike` alert fires at http://localhost:9090/alerts after a few minutes. Set the value back to `"200"` and rerun the command to recover.
+4. **Fail-open path**: inference stays healthy through the bad input — the `REVIEW` counter and the fallback-rate panel stay near zero.
+
+![Transactions — live feed and alerts](demo/Transactions.png)
+
+![Model behavior — flag rate and score drift](demo/Model%20behavior.png)
+
 ## Services and ports
 
 | Service | Address | Purpose |
 |---|---|---|
-| Grafana | http://localhost:3000 | dashboards |
+| Grafana | http://localhost:3000 | dashboard |
 | Flink UI | http://localhost:8081 | job status, checkpoints, backpressure |
 | Prometheus | http://localhost:9090 | metrics and alerts |
 | Metrics exporter | http://localhost:8000/metrics | model-behavior metrics |
@@ -132,27 +148,24 @@ kcat -b localhost:29092 -t transactions.dlq -C -o -5 -e
 
 ## Monitoring
 
-Three Grafana dashboards are provisioned automatically:
+One Grafana dashboard, **Fraud Detection**, is provisioned automatically, with two rows:
 
-- **Transactions**: live feed of scored transactions, latest alerts, latest `REVIEW` events and dead letters, with counters for the last 5 minutes.
-- **Model Behavior**: fraud flag rate, decisions per second, score quantiles, score PSI, feature PSI and fallback rate.
-- **System Health**: events per second (raw, scored, dead-letter), scoring latency, consumer lag, Flink checkpoints, restarts and backpressure.
+- **Transactions** (PostgreSQL): counters for the last 5 minutes (scored, `ALERT`, `REVIEW`, flag rate, dead letters), a live feed of the latest scored transactions and a table of the latest fraud alerts.
+- **Model behavior** (Prometheus): decisions per second, fraud flag rate, score PSI against the training reference with the 0.2 alert line, and the fallback (`REVIEW`) rate.
 
-Drift is measured with the Population Stability Index (PSI) over a 5-minute rolling window, for the fraud score and for ten input features: `C13`, `TransactionAmt`, `card1`, `C1`, `V258`, `card6`, `card2`, `V70`, `C14` and `addr1`. The reference distribution comes from `artifacts/reference_distributions.json` when present (built from the training data with `tools/make_reference.py`), or otherwise from the first live events.
+Throughput, scoring latency, consumer lag and Flink checkpoint metrics remain available in Prometheus (http://localhost:9090) and the Flink UI (http://localhost:8081).
+
+Drift is measured with the Population Stability Index (PSI) over a 5-minute rolling window. The score PSI is shown on the dashboard and alerted on; the exporter also computes PSI for ten input features (`C13`, `TransactionAmt`, `card1`, `C1`, `V258`, `card6`, `card2`, `V70`, `C14` and `addr1`), available at `http://localhost:8000/metrics` and in Prometheus as `feature_psi`. The reference distribution comes from `artifacts/reference_distributions.json` when present (built from the training data with `tools/make_reference.py`), or otherwise from the first live events.
 
 Alert rules (`monitoring/alert_rules.yml`):
 
 | Alert | Condition |
 |---|---|
 | `ScoringLatencyP99Breach` | p99 scoring latency above 500 ms for 5 minutes |
-| `FlinkCheckpointFailures` | a failed checkpoint in the last 10 minutes |
-| `FlinkJobRestarted` | a job restart in the last 15 minutes |
 | `DlqSpike` | dead-letter rate above 1 event/s for 2 minutes |
-| `ScoringConsumerLagGrowing` | consumer lag above 5,000 events for 5 minutes |
 | `ExporterDown` | metrics exporter unreachable for 2 minutes |
 | `FraudFlagRateOutOfBounds` | flag rate outside 0.5% to 15% for 10 minutes |
 | `ScorePsiBreach` | score PSI above 0.2 for 10 minutes |
-| `FeaturePsiBreach` | any feature PSI above 0.2 for 10 minutes |
 | `FallbackRateSpike` | more than 1% of events in `REVIEW` for 5 minutes |
 
 ## Persistence
@@ -197,11 +210,12 @@ FROM scored_transactions GROUP BY 1 ORDER BY 1 DESC LIMIT 24;
 .
 ├── .github/workflows/tests.yml   CI workflow (pytest)
 ├── artifacts/                    trained models, preprocessing pipeline, features, threshold, manifest
+├── demo/                         dashboard screenshots for this README
 ├── data/                         replay CSVs from Kaggle (not tracked)
 ├── docs/operations.md            operating guide
 ├── monitoring/
 │   ├── exporter/                 model-behavior metrics exporter (PSI, flag rate, lag)
-│   ├── grafana/                  dashboards and provisioning
+│   ├── grafana/                  dashboard and provisioning
 │   ├── alert_rules.yml
 │   └── prometheus.yml
 ├── producer/                     replay producer
